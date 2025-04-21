@@ -1,15 +1,15 @@
 <template>
-  <div class="space-y-4">
-    <!-- Status Filters update query param -->
-    <div class="flex space-x-2 mb-4">
+  <div class="space-y-6">
+    <!-- Status Filters -->
+    <div class="flex flex-wrap gap-2 mb-6">
       <button
         v-for="s in statuses"
         :key="s.value"
         @click="filterStatus(s.value)"
         :class="[
-          'px-3 py-1 rounded-full font-medium',
+          'px-4 py-2 rounded-full font-semibold transition focus:outline-none',
           filter.value === s.value
-            ? 'bg-blue-600 text-white'
+            ? 'bg-blue-600 text-white shadow'
             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
         ]"
       >
@@ -17,51 +17,75 @@
       </button>
     </div>
 
-    <!-- Ticket Cards -->
-    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <div
+    <!-- Ticket List -->
+    <ul role="list" class="space-y-4">
+      <li
         v-for="ticket in tickets"
         :key="ticket._id"
-        class="bg-white p-4 rounded shadow"
+        class="group flex justify-between items-start gap-x-6 p-6 bg-white rounded-lg shadow hover:shadow-xl transform hover:-translate-y-1 transition"
+        :class="borderClass(ticket.status)"
       >
-        <h3 class="text-lg font-semibold">{{ ticket.title }}</h3>
-        <p class="mt-2 text-gray-600">{{ ticket.description }}</p>
-        <span
-          class="inline-block mt-3 px-2 py-1 text-sm rounded-full"
-          :class="statusClass(ticket.status)"
-        >
-          {{ ticket.status.replace('_', ' ') }}
-        </span>
-        <div class="mt-4 flex space-x-2">
-          <router-link
-            :to="{ name: 'TicketEdit', params: { id: ticket._id } }"
-            class="flex-1 bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-          >
-            Edit
-          </router-link>
-          <button
-            @click="remove(ticket._id)"
-            class="flex-1 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-          >
-            Delete
-          </button>
+        <!-- Left: Title & Description -->
+        <div class="flex-1 min-w-0">
+          <p class="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition">
+            {{ ticket.title }}
+          </p>
+          <p class="mt-2 text-sm text-gray-500">
+            {{ ticket.description }}
+          </p>
         </div>
-      </div>
-    </div>
 
-    <p v-if="tickets.length === 0" class="text-center text-gray-500">
-      No tickets found.
-    </p>
+        <!-- Right: Status & Actions -->
+        <div class="flex-shrink-0 flex flex-col items-end space-y-3">
+          <!-- Status Badge -->
+          <span
+            class="inline-flex items-center px-3 py-1 text-xs font-medium uppercase rounded-full tracking-wide"
+            :class="statusClass(ticket.status)"
+          >
+            {{ ticket.status.replace('_', ' ') }}
+          </span>
+
+          <!-- Icons -->
+          <div class="flex space-x-2">
+            <router-link
+              :to="{ name: 'TicketEdit', params: { id: ticket._id } }"
+              class="p-2 rounded-full hover:bg-blue-100 transition"
+            >
+              <PencilIcon class="h-5 w-5 text-blue-500" />
+            </router-link>
+            <button
+              @click="remove(ticket._id)"
+              class="p-2 rounded-full hover:bg-red-100 transition"
+            >
+              <TrashIcon class="h-5 w-5 text-red-500" />
+            </button>
+          </div>
+        </div>
+      </li>
+    </ul>
+
+    <!-- Empty State -->
+    <div v-if="tickets.length === 0" class="py-12 text-center text-gray-400">
+      <svg
+        class="mx-auto h-12 w-12 opacity-50"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none" viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M9 13h6m2 0a2 2 0 100-4H7a2 2 0 000 4h6zm0 0v6m0-6V7" />
+      </svg>
+      <p class="mt-4 text-sm">No tickets found.</p>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
-// Base API URL from env
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
-
 const route = useRoute()
 const router = useRouter()
 
@@ -75,7 +99,6 @@ const statuses = [
   { label: 'Closed', value: 'closed' }
 ]
 
-// Fetch tickets from API
 async function fetchTickets() {
   const q = filter.value ? `?status=${filter.value}` : ''
   const res = await fetch(`${API_BASE}/tickets${q}`)
@@ -88,12 +111,21 @@ watch(() => route.query.status, (s) => {
   fetchTickets()
 })
 
-// Update the query param to filter
 function filterStatus(val) {
   router.push({ query: val ? { status: val } : {} })
 }
 
-// CSS classes per status
+// Tailwind classes for side-border color
+function borderClass(status) {
+  const map = {
+    open: 'border-l-4 border-green-500',
+    in_progress: 'border-l-4 border-yellow-500',
+    closed: 'border-l-4 border-gray-400'
+  }
+  return map[status] || ''
+}
+
+// Tailwind classes for badge
 function statusClass(s) {
   return {
     'bg-green-100 text-green-800': s === 'open',
@@ -102,10 +134,16 @@ function statusClass(s) {
   }
 }
 
-// Delete a ticket and refresh
 async function remove(id) {
   if (!confirm('Delete this ticket?')) return
   await fetch(`${API_BASE}/tickets/${id}`, { method: 'DELETE' })
   fetchTickets()
 }
 </script>
+
+<style>
+/* ensure the card border sits flush */
+ul > li {
+  border-left-width: 4px;
+}
+</style>
