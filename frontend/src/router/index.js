@@ -1,4 +1,3 @@
-// src/router/index.js
 import { createRouter, createWebHashHistory } from 'vue-router'
 import TicketList from '../components/TicketList.vue'
 import TicketForm from '../components/TicketForm.vue'
